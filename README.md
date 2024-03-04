@@ -1,4 +1,4 @@
-[![Docker Image CI](https://github.com/hustshawn/k8s-demo/actions/workflows/docker-image.yml/badge.svg)](https://github.com/hustshawn/k8s-demo/actions/workflows/docker-image.yml)
+[![Docker](https://github.com/hustshawn/k8s-demo/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/hustshawn/k8s-demo/actions/workflows/docker-publish.yml)
 
 
 # k8s demo
