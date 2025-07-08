@@ -52,3 +52,81 @@ jobs:
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+
+    - name: Update deployment repository
+      if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DEPLOY_REPO: hustshawn/k8s-deploy-demo
+        IMAGE_TAG: ${{ steps.timestamp.outputs.timestamp }}
+      run: |
+        # Clone the deployment repository
+        git clone https://github.com/$DEPLOY_REPO.git deploy-repo
+        cd deploy-repo
+        
+        # Configure git
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Create a new branch for the update
+        BRANCH_NAME="update-image-tag-$IMAGE_TAG"
+        git checkout -b $BRANCH_NAME
+        
+        # Update the image tag in kustomization.yaml using Kustomize image override
+        # Current format: newTag: main -> newTag: TIMESTAMP
+        sed -i "s|newTag: .*|newTag: $IMAGE_TAG|g" kustomization.yaml
+        
+        # Verify the change was made
+        echo "Updated kustomization.yaml:"
+        grep -A 2 "images:" kustomization.yaml
+        
+        # Check if there are any changes
+        if git diff --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        # Show the diff for debugging
+        echo "Changes made:"
+        git diff
+        
+        # Commit and push changes
+        git add kustomization.yaml
+        git commit -m "Update image tag to $IMAGE_TAG
+
+        - Updated hustshawn/k8s-demo image tag from main to $IMAGE_TAG via Kustomize
+        - Source commit: ${{ github.sha }}
+        - Triggered by: ${{ github.event_name }} on ${{ github.ref }}"
+        
+        git push origin $BRANCH_NAME
+        
+        # Create pull request using GitHub CLI
+        gh pr create \
+          --title "🚀 Update image tag to $IMAGE_TAG" \
+          --body "## Automated Deployment Update
+
+        This PR updates the container image tag using Kustomize image override.
+
+        ### Changes
+        - **Image**: \`hustshawn/k8s-demo:main\` → \`hustshawn/k8s-demo:$IMAGE_TAG\`
+        - **File**: \`kustomization.yaml\`
+        - **Method**: Kustomize image override
+        - **Timestamp**: $IMAGE_TAG
+        - **Source Commit**: [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+
+        ### Deployment Details
+        - **Namespace**: default
+        - **App**: backend-app
+        - **Container**: backend
+
+        ### Kustomize Configuration
+        \`\`\`yaml
+        images:
+        - name: hustshawn/k8s-demo
+          newTag: $IMAGE_TAG
+        \`\`\`
+
+        ---
+        🤖 This PR was automatically created by the CI/CD pipeline." \
+          --head $BRANCH_NAME \
+          --base main
