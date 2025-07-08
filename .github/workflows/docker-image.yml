@@ -56,12 +56,12 @@ jobs:
     - name: Update deployment repository
       if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.DEPLOY_REPO_TOKEN }}
         DEPLOY_REPO: hustshawn/k8s-deploy-demo
         IMAGE_TAG: ${{ steps.timestamp.outputs.timestamp }}
       run: |
-        # Clone the deployment repository
-        git clone https://github.com/$DEPLOY_REPO.git deploy-repo
+        # Clone the deployment repository with token authentication
+        git clone https://$GITHUB_TOKEN@github.com/$DEPLOY_REPO.git deploy-repo
         cd deploy-repo
         
         # Configure git
@@ -98,6 +98,8 @@ jobs:
         - Source commit: ${{ github.sha }}
         - Triggered by: ${{ github.event_name }} on ${{ github.ref }}"
         
+        # Set remote URL with token for pushing
+        git remote set-url origin https://$GITHUB_TOKEN@github.com/$DEPLOY_REPO.git
         git push origin $BRANCH_NAME
         
         # Create pull request using GitHub CLI
